@@ -21,6 +21,8 @@ flowchart TD
   usage --> ok["200 OpenAI-shaped JSON"]
 ```
 
+
+
 Budget is claimed **before** any upstream call. The claim and the usage insert are separate statements; a failed provider call refunds the slot so a 502 does not permanently burn quota.
 
 ## Important decisions
@@ -85,7 +87,7 @@ Raw keys are `vk_` + 24 random bytes, shown once at mint time. The database stor
 
 The gateway holds the real provider key, so every call it forwards is billed to us, not the caller. Whoever pays the bill must own the limit.
 
-- **A caller-side limit can't be trusted.** A bug, a retry loop, or a leaked key means the caller blows past the cap — and the charge still lands on us. 
+- **A caller side limit can't be trusted.** A bug, a retry loop, or a leaked key means the caller blows past the cap, and the charge still lands on us. 
 - **The gateway is the one choke point.** Every call passes through it, it holds the credential, and it owns the counter in Postgres, so it's the only place that can actually say no.
 - **It blocks before spending.** The slot is claimed *before* the provider call, so an over-budget request is rejected with a 429 having cost nothing. Checking on the client, or after the call, is too late, the money is already spent.
 
