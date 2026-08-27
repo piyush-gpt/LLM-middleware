@@ -35,7 +35,6 @@ chatRouter.post(
       throw badRequest('Invalid request body', parsed.error.flatten());
     }
     const chatReq = parsed.data;
-
     // 1) Enforce budget BEFORE spending money upstream (atomic reservation).
     const claim = await claimRequestSlot(apiKey.id);
     if (!claim.ok) {
@@ -43,7 +42,6 @@ chatRouter.post(
         `Budget exhausted: used ${claim.requestsUsed}/${claim.requestLimit} requests`,
       );
     }
-
     try {
       const outcome = await runChat(chatReq);
 

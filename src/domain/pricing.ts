@@ -15,17 +15,13 @@ const PRICES: Record<string, ModelPrice> = {
   'openai/gpt-3.5-turbo': { inputMicrosPerToken: 0.5, outputMicrosPerToken: 1.5 },
 };
 
-const DEFAULT_PRICE: ModelPrice = {
-  inputMicrosPerToken: 0.5,
-  outputMicrosPerToken: 1.5,
-};
-
 export function estimateCostMicros(params: {
   model: string;
   tokensIn: number;
   tokensOut: number;
 }): number {
-  const price = PRICES[params.model] ?? DEFAULT_PRICE;
+  const price = PRICES[params.model];
+  if (!price) return 0;
 
   const raw =
     params.tokensIn * price.inputMicrosPerToken +

@@ -1,4 +1,4 @@
-# DECISIONS.md
+# [DECISIONS.md](http://DECISIONS.md)
 
 ## What I built
 
@@ -23,6 +23,8 @@ Budget is checked **before** money is spent upstream. The claim and the usage in
 
 ## Important decisions
 
+
+
 ### 1. Node.js + TypeScript, Express
 
 **Options:** Python/FastAPI vs Node/TypeScript (Express or Fastify).
@@ -43,7 +45,7 @@ The data is relational: keys, budgets, per-request usage, and “how much has ke
 
 **Tradeoff:** extra latency vs an in memory counter. I thought correctness beat microseconds for this task so didnot use redis for this, but in actual production, would definitely use it.
 
-### 3. Request-count budgets, cost only for observability
+### 3. Request count budgets, cost only for usability
 
 **Options:** cap on requests, tokens, or ₹/USD.
 
@@ -64,8 +66,8 @@ Crucially, choosing request count for *enforcement* costs me nothing on *visibil
 Non-streaming is what makes the other three requirements (budgets, failure handling, logging) actually hold together:
 
 - **Clean retry and failure stay possible.** The instant you flush the first SSE chunk you have already sent `200 OK` and committed to that response; if the upstream then dies mid stream you cannot silently retry or return an error, the caller already holds a partial answer. Buffering the full response first lets me detect failure, retry, and then fail fast with a real status *before* a single byte reaches the client. My whole retry/refund policy depends on this.
-- **Real HTTP status codes.** Over-budget must *actually block* (429/402), and a dead upstream must surface as a real error (502). Those are response-status decisions, and with streaming the status is locked in before the outcome is known, so rejections have to be smuggled inside the event stream. One JSON response returns an honest `429`/`402`/`502`.
-- **One straight line.** `auth → budget claim → provider → log → reply` stays a single sequential path — the clearest possible system-design story — instead of forking into early headers, trickling body, out-of-band errors, and end-of-stream reconciliation.
+- **Real HTTP status codes.** Over budget must *actually block* (429/402), and a dead upstream must surface as a real error (502). Those are response status decisions, and with streaming the status is locked in before the outcome is known, so rejections have to be smuggled inside the event stream. One JSON response returns an honest `429`/`402`/`502`.
+- **One straight line.** `auth → budget claim → provider → log → reply` stays a single sequential path , the clearest possible system-design story, instead of forking into early headers, trickling body, out-of-band errors, and end-of-stream reconciliation.
 
 Streaming's real payoff is token-by-token *UX*, which this brief explicitly does not score ("we do not score UI"). So trading it away to make budget/failure-handling/logging bulletproof is the right call, not a shortcut.
 
@@ -84,6 +86,8 @@ The gateway holds the real provider key, so every call it forwards is billed to 
 - **A caller-side limit can't be trusted.** A bug, a retry loop, or a leaked key means the caller blows past the cap — and the charge still lands on us. 
 - **The gateway is the one choke point.** Every call passes through it, it holds the credential, and it owns the counter in Postgres, so it's the only place that can actually say no.
 - **It blocks before spending.** The slot is claimed *before* the provider call, so an over-budget request is rejected with a 429 having cost nothing. Checking on the client, or after the call, is too late, the money is already spent.
+
+
 
 ## Concurrency
 
@@ -114,6 +118,8 @@ I chose to fail fast rather than serve a mock/stub response. A fake `200` that a
 - **Cost/token enforcement**, logged, not capped.
 - **A second real provider / fallback model**, the gateway fails fast on provider errors today; adding Anthropic or Ollama as a real fallback is wiring on the model registry, not design.
 - **Cache, router, Ollama stretch**, core first, as the brief asked.
+
+
 
 ## Least confident decision
 

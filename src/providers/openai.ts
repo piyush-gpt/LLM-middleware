@@ -42,7 +42,7 @@ export const openaiProvider: Provider = {
 
     return {
       provider: 'openai',
-      model: data.model ?? req.model,
+      model: req.model,
       content,
       usage: {
         tokensIn: data.usage?.prompt_tokens ?? 0,
