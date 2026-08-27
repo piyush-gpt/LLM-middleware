@@ -6,20 +6,22 @@ A small HTTP LLM gateway. Callers authenticate with a gateway-issued virtual key
 
 ## Request lifecycle
 
-```
-client
-  │  POST /v1/chat/completions   Authorization: Bearer vk_…
-  ▼
-gateway
-  1. auth     hash the key, look up an active row
-  2. budget   atomic claim: UPDATE … WHERE requests_used < request_limit
-  3. provider timeout + bounded retry on the chosen model
-              if it still fails → refund the claimed slot, 502 (fail fast)
-  4. usage    persist tokens + estimated cost  (sync, before the response)
-  5. reply    OpenAI-shaped JSON + a small `gateway` block
+`POST /v1/chat/completions` with `Authorization: Bearer vk_…`
+
+```mermaid
+flowchart TD
+  client[Client] -->|"Bearer vk_..."| auth[Hash key and look up active row]
+  auth -->|missing or inactive| unauth["401 unauthorized"]
+  auth --> budget["Atomic claim: UPDATE WHERE used less than limit"]
+  budget -->|0 rows| over["429 budget exceeded"]
+  budget -->|claimed| provider[Call model with timeout and bounded retry]
+  provider -->|all attempts fail| refund[Refund claimed slot]
+  refund --> fail["502 upstream error"]
+  provider -->|success| usage[Log tokens and estimated cost]
+  usage --> ok["200 OpenAI-shaped JSON"]
 ```
 
-Budget is checked **before** money is spent upstream. The claim and the usage insert are separate statements; a failed provider call refunds the slot so a 502 does not permanently burn quota.
+Budget is claimed **before** any upstream call. The claim and the usage insert are separate statements; a failed provider call refunds the slot so a 502 does not permanently burn quota.
 
 ## Important decisions
 
